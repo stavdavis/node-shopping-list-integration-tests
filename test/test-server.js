@@ -138,3 +138,93 @@ describe('Shopping List', function() {
       });
   });
 });
+
+////////ADDING TESTS FOR RECIPES:
+describe('Recipes testing', function() {
+
+  before(function() {
+    return runServer();
+  });
+
+  after(function() {
+    return closeServer();
+  });
+
+  //Testing GET:
+  it('should list recipe items on GET', function() {
+    return chai.request(app)
+      .get('/recipes')
+      .then(function(res) {
+        res.should.have.status(200);
+        res.should.be.json;
+        res.body.should.be.a('array');
+        // because we create three items on app load
+        res.body.length.should.be.at.least(1);
+        const expectedKeys = ['id', 'name', 'ingredients'];
+        res.body.forEach(function(item) {
+          item.should.be.a('object');
+          item.should.include.keys(expectedKeys);
+        });
+      });
+  });
+
+  //Testing POST:
+  it('should add a recipe item on POST', function() {
+    const newItem = {name: 'banana cake', ingredients: ['1 banana, 2 cups milk', '1 lb of flour']};
+    return chai.request(app)
+      .post('/recipes')
+      .send(newItem)
+      .then(function(res) {
+        res.should.have.status(201);
+        res.should.be.json;
+        res.body.should.be.a('object');
+        res.body.should.include.keys('id', 'name', 'ingredients');
+        res.body.id.should.not.be.null;
+        // response should be deep equal to `newItem` from above if we assign
+        // `id` to it from `res.body.id`
+        res.body.should.deep.equal(Object.assign(newItem, {id: res.body.id}));
+      });
+  });
+
+  //Testing PUT:
+  it('should update items on PUT', function() {
+    // we initialize our updateData here and then after the initial
+    // request to the app, we update it with an `id` property so
+    // we can make a second, PUT call to the app.
+    const updateData = {
+      name: 'stake and eggs',
+      ingredients: ['1 stake', '2 eggs']
+    };
+
+    return chai.request(app)
+      // first have to get so we have an idea of object to update
+      .get('/recipes')
+      .then(function(res) {
+        updateData.id = res.body[0].id;
+        return chai.request(app)
+          .put(`/recipes/${updateData.id}`)
+          .send(updateData);
+      })
+      // prove that the PUT request has right status code
+      .then(function(res) {
+        res.should.have.status(204);
+      });
+  });
+
+  //Testing DELETE:
+  it('should delete items on DELETE', function() {
+    return chai.request(app)
+      // first have to get so we have an `id` of item
+      // to delete
+      .get('/recipes')
+      .then(function(res) {
+        return chai.request(app)
+          .delete(`/recipes/${res.body[0].id}`);
+      })
+      .then(function(res) {
+        res.should.have.status(204);
+      });
+  });
+});
+
+
